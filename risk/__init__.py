@@ -19,6 +19,7 @@ from risk.dynamic import (
 from risk.attribution import (
     BarraRiskAttribution,
     BarraStyleExposureReport,
+    BarraFactorCalculator,
     HistoricalStressTester,
     StressTestReport,
     StressScenarioOutcome,
@@ -44,6 +45,7 @@ __all__ = [
     # Attribution
     "BarraRiskAttribution",
     "BarraStyleExposureReport",
+    "BarraFactorCalculator",
     "HistoricalStressTester",
     "StressTestReport",
     "StressScenarioOutcome",

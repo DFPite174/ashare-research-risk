@@ -34,6 +34,7 @@ from risk.dynamic import (
 from risk.attribution import (
     BarraRiskAttribution,
     BarraStyleExposureReport,
+    BarraFactorCalculator,
     HistoricalStressTester,
     StressTestReport,
 )
@@ -67,6 +68,7 @@ class RiskEngine:
         max_adv_participation: float = 0.10,
         min_cash_buffer_ratio: float = 0.03,
         target_annual_vol: float = 0.15,
+        barra_calculator: Optional[BarraFactorCalculator] = None,
     ):
         self.tradability_filter = TradabilityPriceFilter()
         self.blacklist_filter = BlacklistFilter()
@@ -79,6 +81,7 @@ class RiskEngine:
         self.vol_engine = VolatilityTargetingEngine(target_annual_vol=target_annual_vol)
         self.circuit_breaker = DrawdownCircuitBreaker()
         self.barra_attribution = BarraRiskAttribution()
+        self.barra_calculator = barra_calculator
         self.stress_tester = HistoricalStressTester()
 
     def process_target_weights(
@@ -139,8 +142,17 @@ class RiskEngine:
 
         # 8. 事后诊断: Barra 风格暴露度分析
         barra_rep = None
-        if asset_style_matrix is not None:
-            barra_rep = self.barra_attribution.compute_portfolio_exposure(w, asset_style_matrix)
+        eff_style_matrix = asset_style_matrix
+        if eff_style_matrix is None and self.barra_calculator is not None:
+            trade_date_str = str(bars_slice["trade_date"].iloc[0]) if bars_slice is not None and not bars_slice.empty and "trade_date" in bars_slice.columns else None
+            eff_style_matrix = self.barra_calculator.get_style_matrix(
+                trade_date=trade_date_str,
+                symbols=list(w.index),
+                bars_slice=bars_slice,
+            )
+
+        if eff_style_matrix is not None:
+            barra_rep = self.barra_attribution.compute_portfolio_exposure(w, eff_style_matrix)
 
         # 9. 事后诊断: 宏观黑天鹅极端情景压力测试
         style_exp_dict = barra_rep.style_exposures if barra_rep else None
